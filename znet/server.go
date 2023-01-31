@@ -3,6 +3,7 @@ package znet
 import (
 	"fmt"
 	"net"
+	"zinx/ziface"
 )
 
 type Server struct {
@@ -14,6 +15,8 @@ type Server struct {
 	IP string
 	//监听的端口
 	Port int
+	//当前server添加一个router,server的注册的链接对应的处理业务
+	Router ziface.IRouter
 }
 
 func (s *Server) Start() {
@@ -34,6 +37,8 @@ func (s *Server) Start() {
 			return
 		}
 		fmt.Println("start zinx server succ", s.Name, "success,listening")
+		var cid uint32 = 0
+
 		//3阻塞等待客户端进行连接，处理客户端连接的业务
 		for {
 			//如果有客户端连接，阻塞会返回
@@ -42,22 +47,12 @@ func (s *Server) Start() {
 				fmt.Println("accept err,", err)
 				return
 			}
-			//已经有客户端连接，做业务
-			go func() {
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Println("recv buf err,", err)
-					}
-					fmt.Printf("server recv %s,cnt = %d\n", buf, cnt)
+			//处理新链接的业务方法和conn进行绑定，得到我们的连接模块
+			dealConn := NewConnection(conn, cid, s.Router)
+			cid++
 
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("write back buf err", err)
-						continue
-					}
-				}
-			}()
+			//启动当前的业务处理
+			go dealConn.Start()
 		}
 	}()
 }
@@ -66,19 +61,25 @@ func (s *Server) Stop() {
 
 }
 
-func (s *Server) Serve() {
+func (s *Server) Server() {
 	s.Start()
 
 	//阻塞状态
 	select {}
 }
 
-func NewServer(name string) *Server { //ziface.IServer
+func (s *Server) AddRouter(router ziface.IRouter) {
+	s.Router = router
+	fmt.Println("Add router success")
+}
+
+func NewServer(name string) ziface.IServer { //调用接口
 	s := &Server{
 		Name:      name,
 		IPVersion: "tcp4",
 		IP:        "127.0.0.1",
 		Port:      8999,
+		Router:    nil,
 	}
 	return s
 }
