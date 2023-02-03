@@ -8,8 +8,8 @@
             "name": "Launch Package",
             "type": "go",
             "request": "launch",
-            "mode": "auto",
-            "program": "/home/helf/zinx/mydemo/zinxv0.4/server.go",
+            "mode": "test",
+            "program": "/home/helf/zinx/znet/datapack_znet.go",
             "env":{
                 
                 }

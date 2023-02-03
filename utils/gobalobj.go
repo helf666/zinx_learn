@@ -17,7 +17,7 @@ type GlobalObj struct {
 
 	Version        string //zinx的版本号
 	MaxConn        int    //最大的连接数
-	MaxPackageSize int    //数据报最大数量
+	MaxPackageSize uint32 //数据报最大数量
 
 }
 

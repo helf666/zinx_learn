@@ -1,9 +1,10 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
-	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -37,16 +38,36 @@ func (c *Connection) StartReader() {
 
 	for {
 		//读取客户端的数据到buf中，最大512字节
-		buf := make([]byte, utils.GlobalObject.MaxPackageSize)
-		_, err := c.Conn.Read(buf)
-		if err != nil {
-			fmt.Println("receive buf err", err)
-			continue
+
+		dp := NewDataPack()
+		//读取客户端的Msg Head
+		headData := make([]byte, dp.GetHeadLen())
+		if _, err := io.ReadFull(c.GetTcpConnection(), headData); err != nil {
+			fmt.Println("read msg err", err)
+			break
 		}
-		//得到当前的request数据
+
+		//拆包
+		msg, err := dp.Unpack(headData)
+		if err != nil {
+			fmt.Println("unpack error")
+			break
+		}
+
+		//根据datalen再次读取data
+		var data []byte
+		if msg.GetMsgLen() > 0 {
+			data = make([]byte, msg.GetMsgLen())
+			if _, err := io.ReadFull(c.GetTcpConnection(), data); err != nil {
+				fmt.Println("read msg data err", err)
+			}
+		}
+		msg.SetData(data)
+
+		//将Msg交给路由器
 		req := Request{
 			conn: c,
-			data: buf,
+			msg:  msg,
 		}
 
 		go func(request ziface.IRequest) {
@@ -56,6 +77,24 @@ func (c *Connection) StartReader() {
 		}(&req)
 
 	}
+}
+
+// 提供一个sendmsg方法 将要发送给客户端的数据，先进行封包，再发送
+func (c *Connection) SendMsg(msgId uint32, data []byte) error {
+	if c.isClosed {
+		return errors.New("connection is closed")
+	}
+	//将data进行封包  msgdatalen msgid  data
+	dp := NewDataPack()
+	binaryMsg, err := dp.Pack(NewMsgDataPackage(msgId, data)) //序列化好的msg
+	if err != nil {
+		fmt.Println("package err", err)
+	}
+	//将数据发送到客户端
+	if _, err := c.Conn.Write(binaryMsg); err != nil {
+		fmt.Println("write msg err", err)
+	}
+	return nil
 }
 
 func (c *Connection) StartWriter() {
@@ -98,8 +137,3 @@ func (c *Connection) GetConnId() uint32 {
 func (c *Connection) GetRemoterAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
-
-// 发送数据
-// func (c *Connection) send(data []byte) error {
-// 	return nil
-// }
