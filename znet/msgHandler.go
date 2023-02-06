@@ -3,18 +3,25 @@ package znet
 import (
 	"fmt"
 	"strconv"
+	"zinx/utils"
 	"zinx/ziface"
 )
 
 type MsgHandle struct {
 	//存放每个MsgID所对应的处理方法
 	Apis map[uint32]ziface.IRouter
+	//负责worker取任务的消息队列
+	TaskQueue []chan ziface.IRequest
+	//负责worker池的worker数量
+	WorkerPoolSize uint32
 }
 
 // 初始化/创建MsgHandle
 func NewMsgHandle() *MsgHandle {
 	return &MsgHandle{
-		Apis: make(map[uint32]ziface.IRouter),
+		Apis:           make(map[uint32]ziface.IRouter),
+		WorkerPoolSize: utils.GlobalObject.WorkerPoolSize, //从全局配置中获取
+		TaskQueue:      make([]chan ziface.IRequest, utils.GlobalObject.WorkerPoolSize),
 	}
 }
 
@@ -40,4 +47,29 @@ func (mh *MsgHandle) AddRouter(msgID uint32, router ziface.IRouter) {
 	//添加msg与API的绑定关系
 	mh.Apis[msgID] = router
 	fmt.Println("Add api msgID", msgID, "success")
+}
+
+// 启动一个工作池 （只能发生一次）
+func (mh *MsgHandle) StartWorker() {
+	for i := 0; i < int(mh.WorkerPoolSize); i++ {
+		//1个worker启动
+
+		//当前worker对应的channel消息队列 开辟空间
+		mh.TaskQueue[i] = make(chan ziface.IRequest, utils.GlobalObject.MaxWorkerTaskLen)
+		//启动当前的worker 阻塞等待消息
+		go mh.StartOneWorker(i, mh.TaskQueue[i])
+	}
+}
+
+// 启动一个工作流
+func (mh *MsgHandle) StartOneWorker(workerID int, taskQueue chan ziface.IRequest) {
+	fmt.Println("worker ID ", workerID, "is started")
+	//不断的阻塞等待对应的消息队列的消息
+	for {
+		select {
+		case request := <-taskQueue:
+			mh.DoMsgHandler(request)
+
+		}
+	}
 }
