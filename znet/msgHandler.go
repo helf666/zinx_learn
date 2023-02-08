@@ -50,7 +50,7 @@ func (mh *MsgHandle) AddRouter(msgID uint32, router ziface.IRouter) {
 }
 
 // 启动一个工作池 （只能发生一次）
-func (mh *MsgHandle) StartWorker() {
+func (mh *MsgHandle) StartWorkerPool() {
 	for i := 0; i < int(mh.WorkerPoolSize); i++ {
 		//1个worker启动
 
@@ -72,4 +72,15 @@ func (mh *MsgHandle) StartOneWorker(workerID int, taskQueue chan ziface.IRequest
 
 		}
 	}
+}
+
+// 将消息交给taskqueue , 由 worker进行处理
+func (mh *MsgHandle) SendMsgToTaskQueue(request ziface.IRequest) {
+	//将消息平均分配给不同的worker  分布式
+	workerID := request.GetConnection().GetConnId() % mh.WorkerPoolSize
+	fmt.Println("Add conID = ", request.GetConnection().GetConnId(),
+		"request msgID = ", request.GetMsgId(),
+		"to workerID = ", workerID)
+
+	mh.TaskQueue[workerID] <- request
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -73,6 +74,12 @@ func (c *Connection) StartReader() {
 		req := Request{
 			conn: c,
 			msg:  msg,
+		}
+
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			c.MsgHandler.SendMsgToTaskQueue(&req)
+		} else {
+			go c.MsgHandler.DoMsgHandler(&req)
 		}
 
 		//根据绑定的conn对应router调用
