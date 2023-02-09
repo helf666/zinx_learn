@@ -25,7 +25,7 @@ func (s *Server) Start() {
 	fmt.Printf("[zinx] version is %s,max packagesize is %d\n", utils.GlobalObject.Version, utils.GlobalObject.MaxPackageSize)
 	//非阻塞
 	go func() {
-		//开启消息队列及worker工作池
+		//0开启消息队列及worker工作池
 		s.MsgHandler.StartWorkerPool()
 
 		//1获取一个tcp的Addr
