@@ -19,7 +19,7 @@ type GlobalObj struct {
 	MaxConn          int    //最大的连接数
 	MaxPackageSize   uint32 //数据报最大数量
 	WorkerPoolSize   uint32 //当前业务worker池的数量
-	MaxWorkerTaskLen uint32
+	MaxWorkerTaskLen uint32 //允许用户开辟做少个worker
 }
 
 // 定义一个全局的global对象

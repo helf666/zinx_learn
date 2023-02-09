@@ -67,6 +67,7 @@ func (mh *MsgHandle) StartOneWorker(workerID int, taskQueue chan ziface.IRequest
 	//不断的阻塞等待对应的消息队列的消息
 	for {
 		select {
+		//如果有消息过来，出列的就是一个客户端的request
 		case request := <-taskQueue:
 			mh.DoMsgHandler(request)
 
